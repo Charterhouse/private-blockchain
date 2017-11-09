@@ -1,0 +1,37 @@
+version: "3.4"
+services:
+  bootnode:
+    image: charterhouse/blockchain-bootnode:v0.1
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    ports:
+      - target: 30301
+        published: 30301
+        protocol: tcp
+        mode: host
+    volumes:
+      - type: volume
+        source: data
+        target: /node/data
+    networks:
+      - blockchain-net
+  visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+    networks:
+      - blockchain-net
+networks:
+  blockchain-net:
+volumes:
+  data:
