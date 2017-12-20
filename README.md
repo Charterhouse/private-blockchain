@@ -261,10 +261,47 @@ the AWS documentation.
 [Elastic IPs]: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/vpc-eips.html
 [Security Groups for Your VPC]: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_SecurityGroups.html
 
-
 ## Running blockchain nodes on the private network.
 
-Having our VPC ready, now we are ready to run our blockchain nodes.
+Having our VPC ready, we can now create our SWARM using Docker Cloud. Login to your docker cloud account (create one if you do not already have one), and in the *Swarms* panels select *Create*.
+
+> If you haven't done it before, you will need to connect you AWS account to Docker Cloud. Follow the instructions in [Link Amazon Web Services to Docker Cloud](https://docs.docker.com/docker-cloud/cloud-swarm/link-aws-swarm/) in Docker documentation.
+
+Give your Swarm a descriptive name, and select `Stable` as the docker version that will be used with this swarm. In our example we use *Frankfurt* region.
+
+![CreateSwarm_1](private-blockchain-assets/SwarmCreate_1.png)
+
+Next, in *Region Advanced Settings* select the `blockchainlab-vpc` from the list and fill in the remaining fields accordingly as showin in the picture below:
+
+![SwarmCreate_VPCSettings](private-blockchain-assets/SwarmCreate_VPCSettings.png)
+
+Next set the Swarm Size to use one manager and four worker nodes, and select the right ssh key to be used for your account (the same that we created in Section *Before you begin* above):
+
+![SwarmCreate_Size](private-blockchain-assets/SwarmCreate_Size.png)
+
+Finally, set the Swarm Manager and Swarm Worker properties. We use a `t2.micro` instance for the manager (where we only intend to run the bootnode and the visualiser), and `t2.medium` for the worker nodes:
+
+![SwarmCreate_Properties](private-blockchain-assets/SwarmCreate_Properties.png)
+
+Click *Create*. Docker Cloud will start creating the Swarm on your AWS account. Please be patient. It may take some time (usually less than 10 minutes). A green dot next to your Swarm name will stop blinking when Swarm is ready.
+
+After Swarm is created, you will see the following EC2 instances on your AWS account:
+
+
+### Updating Security Groups for EC2 instances
+
+Docker Cloud does a pretty good job. The Swarm is ready to start deploying our stacks, yet, it does not know what kind of services we are going to deploy and which additional ports need to be exposed. 
+
+Docker cloud creates the following Security Groups: `blockchain-demo-SwarmWide`, `blockchain-demo-ManagerVpc`, `blockchain-demo-ExternalLoadBalancer`, and `blockchain-demo-NodeVpc`. In order to have access to visualizer we need expose port `8080` on the `blockchain-demo-ManagerVpc` security group. Because visualizer uses ingress port publishing, we can access it using public DNS address (or public IP) of any node in our Swarm. For this to work we need to expose port `8080` also in the `blockchain-demo-NodeVpc`. Finally, our worker nodes will be running the blockchain nodes which expose JSON-RPC interface to connect the wallet app. Therefore, `blockchain-demo-NodeVpc` needs to have port `8545` open as well. Finally, in order to SSH the worker instances, we need to make sure that port `22` is also open. The pictures below show the updated Security Groups:
+
+![SecurityGroups_Manager](private-blockchain-assets/SecurityGroups_Manager.png)
+
+![SecurityGroups_Worker](private-blockchain-assets/SecurityGroups_Worker.png)
+
+### Deploying blockchain nodes
+
+We are ready to deploy our blockchain nodes.
+
 First access the Swarm manager, either by using Docker for Mac or by copying
 the *connect* command from the Docker Cloud:
 
@@ -273,12 +310,10 @@ the *connect* command from the Docker Cloud:
 and pasting in into your terminal session:
 
 ```bash
-$ docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock -e DOCKER_HOST dockercloud/client charterhouse/finance-demo-blockchain
-=> You can now start using the swarm charterhouse/finance-demo-blockchain by executing:
-    export DOCKER_HOST=tcp://127.0.0.1:32770
- ~/Documents/Projects/Philips/BLOCKCHAIN/private-blockchain   master± 
+$ docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock -e DOCKER_HOST dockercloud/client charterhouse/blockchain-demo
+=> You can now start using the swarm charterhouse/blockchain-demo by executing:
+	export DOCKER_HOST=tcp://127.0.0.1:32770
 $ export DOCKER_HOST=tcp://127.0.0.1:32770
- ~/Documents/Projects/Philips/BLOCKCHAIN/private-blockchain   master± 
 ```
 
 We are now connected to the Swarm manager and we can see the nodes in our swarm by doing:
@@ -607,19 +642,19 @@ In order to complete the setup, follow the above steps for other nodes.
 ## Docker Images
 
 In folders `bootnode`, `node`, and `miner` you will find the dockerfiles corresponding 
-to the docker images used in the `boot-stack.yml` and `nodes-stack.yml` files. These are
+to the docker images used in the `boot-stack.yml` and `nodes-stack.yml` files. We published the ready to use images images on [Docker Hub](https://hub.docker.com). These are
 `charterhouse/blockchain-bootnode:v0.1`, `charterhouse/blockchain-node:v0.1`, and 
 `charterhouse/blockchain-miner:v0.1` respectively. For simplicity, in our current setup 
 we do not use a separate miner.
 
-In order to change images, fo each image, run in the image directory:
+In order to change images, for each image, run in the image directory:
 
 ```bash
-$ docker build -t charterhouse/blockchain-bootnode:v0.1 .
-$ docker push charterhouse/blockchain-bootnode:v0.1
+$ docker build -t <your-image-tag> .
+$ docker push <your-image-tag>
 ```
 
-> You may need to login with `docker login`. Login with **your** username, not `charterhouse`. 
+> If you push the images to Docker Hub, you will need to login using the `docker login` command. Login with **your** username, not `charterhouse`. 
 
 ## Assets in `private-blockchain.psd`
 
