@@ -287,6 +287,7 @@ Click *Create*. Docker Cloud will start creating the Swarm on your AWS account. 
 
 After Swarm is created, you will see the following EC2 instances on your AWS account:
 
+![SwarmCreate_EC2Instances](private-blockchain-assets/SwarmCreate_EC2Instances.png)
 
 ### Updating Security Groups for EC2 instances
 
