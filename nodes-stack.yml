@@ -1,7 +1,7 @@
 version: "3.4"
 services:
   node:
-    image: charterhouse/blockchain-node:v0.1
+    image: charterhouse/blockchain-node:v0.2
     command: enode://96e26cf742db3f4bd74d7f7e11e87d83abba370e227756f3da735a902c3c07584f3bc077d1988091a91f68c0f0dec3a23704948ebe061c1a0484f63f63054ae4@172.31.34.190:30301
     deploy:
       mode: global
