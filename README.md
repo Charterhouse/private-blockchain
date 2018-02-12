@@ -271,7 +271,7 @@ Give your Swarm a descriptive name, and select `Stable` as the docker version th
 
 ![CreateSwarm_1](private-blockchain-assets/SwarmCreate_1.png)
 
-Next, in *Region Advanced Settings* select the `blockchainlab-vpc` from the list and fill in the remaining fields accordingly as showin in the picture below:
+Next, in *Region Advanced Settings* select the `blockchainlab-vpc` from the list and fill in the remaining fields accordingly as shown in the picture below:
 
 ![SwarmCreate_VPCSettings](private-blockchain-assets/SwarmCreate_VPCSettings.png)
 
@@ -279,7 +279,7 @@ Next set the Swarm Size to use one manager and four worker nodes, and select the
 
 ![SwarmCreate_Size](private-blockchain-assets/SwarmCreate_Size.png)
 
-Finally, set the Swarm Manager and Swarm Worker properties. We use a `t2.micro` instance for the manager (where we only intend to run the bootnode and the visualiser), and `t2.medium` for the worker nodes:
+Finally, set the Swarm Manager and Swarm Worker properties. We use a `t2.micro` instance for the manager (where we only intend to run the bootnode and the visualizer), and `t2.medium` for the worker nodes:
 
 ![SwarmCreate_Properties](private-blockchain-assets/SwarmCreate_Properties.png)
 
@@ -639,6 +639,188 @@ null
 ![MistWalletWithNonEmptyBalance](private-blockchain-assets/MistWalletWithNonEmptyBalance.png)
 
 In order to complete the setup, follow the above steps for other nodes.
+
+## Adding SSL to your blockchain
+
+There are many ways. In our approach, we setup a proxy on the manager node. This proxy will let us connect securely using *https* and it will forward the calls to the suitable nodes. Our proxy will run on the manager role, so make sure that the instance where the manager runs, has associated an elasticIP from AWS. This way, we can be assured that all the following steps will be based on the stable IP address.
+
+We need to perform the following steps:
+
+1. Register a domain and setup DNS for the selected subdomain so that it uses AWS Route 53 as the DNS Service.
+2. Obtain certificates for the proxy using [Let's Encrypt](https://letsencrypt.org).
+3. Deploy a separate proxy stack on our blockchain swarm.
+
+### Get your domain and setup DNS
+
+You will need to get your domain first. Does not matter where, 
+just make sure you can add *NS* records in your DNS zone.
+
+Then, follow the steps from the following two tutorials from AWS:
+
+1. [Creating a Subdomain That Uses Amazon Route 53 as the DNS Service without Migrating the Parent Domain](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingNewSubdomain.html)
+2. [Routing Traffic to an Amazon EC2 Instance](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-to-ec2-instance.html)
+
+After this you should be able to reach your swarm manager using the registered domain.
+
+### Get your certs from Let's Encrypt
+
+We use [certbot](https://certbot.eff.org/) to acquire the certificates from Let's Encrypt.
+Our proxy will be running in docker container, and our host OS is also very docker specific. This means we need to try one of the alternate installation method. Getting the certs with Docker looks easy and is described in [Running with Docker](https://certbot.eff.org/docs/install.html#running-with-docker). We run the docker command from our swarm manager node.
+
+The actual command that we used to retrieve our certificates was:
+
+```bash
+docker run -it -p 443:443 -p 80:80 --name letsencrypt \ 
+    -v "/home/docker/proxy/etc/letsencrypt:/etc/letsencrypt" \ 
+    -v "/home/docker/proxy/var/lib/letsencrypt:/var/lib/letsencrypt" \
+    -v "/home/docker/proxy/var/log/letsencrypt:/var/log/letsencrypt" \
+    certbot/certbot certonly --verbose
+```
+
+> Just if you are curious, we tried to use a more convenient volume mapping and we actually tried the following command:
+>
+>   ```bash
+>    docker run -it -p 443:443 -p 80:80 --name certbot \ 
+>      -v "/etc/letsencrypt:/etc/letsencrypt" \ 
+>      -v "/var/lib/letsencrypt:/var/lib/letsencrypt" \
+>      -v "/var/log/letsencrypt:/var/log/letsencrypt" \
+>      certbot/certbot certonly
+>    ```
+>
+> It did not work... We received the confirmation that certificates were successfully generated, but the files were not written. We tried playing with permissions, running the command with `sudo`, etc, and it did not help. Finally, we changed the `--name` param from `certbot` to `letsencrypt` and we use a subfolder of our home folder as the source in the volume param. This worked. Additionally, the output of the command included agreement to terms and conditions, asking for the email address, and well it worked. We also used verbose mode to see more details, and in the moment of panic (well, the number of attempts per week is limited to 5), we also found there is a `--test-cert` option which is great for testing without actually generating the certificates. In the end this is something we wanted to document and we will provide more details when we have time to further test it.
+
+In the verbose mode, at some point, you should see:
+
+```bash
+Creating directory /etc/letsencrypt/archive.
+Creating directory /etc/letsencrypt/live.
+Archive directory /etc/letsencrypt/archive/your-domain-name and live directory /etc/letsencrypt/live/your-domain-name created.
+Writing certificate to /etc/letsencrypt/live/your-domain-name/cert.pem.
+Writing private key to /etc/letsencrypt/live/your-domain-name/privkey.pem.
+Writing chain to /etc/letsencrypt/live/your-domain-name/chain.pem.
+Writing full chain to /etc/letsencrypt/live/your-domain-name/fullchain.pem.
+Writing README to /etc/letsencrypt/live/your-domain-name/README.
+```
+
+After certs where retrieved successfully, we moved them to `/etc/letsencrypt` folder on the swarm manager EC2 instance.
+
+For the list of all command line options to Certbot, please check [Certbot command-line options](https://certbot.eff.org/docs/using.html#certbot-command-line-options).
+You can always see all the cert generation attempts for your domain using [https://crt.sh/](https://crt.sh/).
+
+### Deploying proxy stack
+
+We use nginx as the proxy server and we use the following template for the `nginx.conf` (see the `proxy/build/` folder):
+
+```
+user nginx;  
+worker_processes 1;
+
+error_log /var/log/nginx/error.log warn;  
+pid /var/run/nginx.pid;
+
+events {  
+  worker_connections 1024;
+}
+
+http {  
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+
+  log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+
+  access_log /dev/stdout main;
+  sendfile on;
+  keepalive_timeout 65;
+
+  server {
+    # redirect from http to https
+    listen 80;
+    server_name  _;
+    return 301 https://$host$request_uri;
+  }
+
+  server {
+    listen              443 ssl;
+    server_name         {{proxy-url}};
+    ssl_certificate     /etc/letsencrypt/live/{{proxy-url}}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{proxy-url}}/privkey.pem;
+    ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    location / {
+       root   /usr/share/nginx/html;
+       index  index.html;
+    }
+
+    location /vis/ {
+      proxy_pass http://{{proxy-url}}:8080/;      
+    }
+
+    location /node-1/ {
+       proxy_pass http://{{node-1}}:8545;
+    }
+  }
+}
+```
+
+In order to generate the ready to use configuration, please use the provided `build.py` script (also in `proxy/build/`). In this file, on top, please provide the suitable replacements. Currently we use `proxy-domain` to be the domain we registered earlier, and `node-1` is supposed to point out to the actual geth node:
+
+```python
+variables = {
+  'proxy-domain': 'your.domain.here',
+  'node-1': 'dns.or.ip.of.the.geth.node'
+}
+```
+
+For instance:
+
+```python
+variables = {
+  'proxy-domain': 'blockchain.example.com',
+  'node-1': 'ec2.35.158.74.125.eu-central-1.compute.amazonaws.com'
+}
+```
+
+Then from the `build` folder, just run
+
+```bash
+$ python3 build.py
+```
+
+This will produce a `nginx.conf` file in the parent folder.
+
+Finally, the proxy stack (`proxy-stack.yml`):
+
+```yaml
+version: '3.4'
+
+services:  
+  nginx:
+    image: nginx:stable-alpine
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /home/docker/proxy/html:/usr/share/nginx/html
+      - /home/docker/proxy/nginx.conf:/etc/nginx/nginx.conf
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+    ports:
+      - 80:80
+      - 443:443
+```
+
+Make sure that all the paths in the `volumes` section above exist on the EC2 instance corresponding to the swarm manager node. Finally, from the manager node, run:
+
+```bash
+$ docker stack deploy -c proxy-stack.yml proxy
+```
+
+With the given configuration that address of blockchain node `node-1` is `https://your.domain.name/node-1/`. You can also access visualizer using `https://your.domain.name/vis/`.
+
 
 ## Docker Images
 
