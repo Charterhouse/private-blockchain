@@ -704,8 +704,22 @@ Writing README to /etc/letsencrypt/live/your-domain-name/README.
 
 After certs where retrieved successfully, we moved them to `/etc/letsencrypt` folder on the swarm manager EC2 instance.
 
-For the list of all command line options to Certbot, please check [Certbot command-line options](https://certbot.eff.org/docs/using.html#certbot-command-line-options).
 You can always see all the cert generation attempts for your domain using [https://crt.sh/](https://crt.sh/).
+
+#### Further reading
+
+1. [Certbot command-line options](https://certbot.eff.org/docs/using.html#certbot-command-line-options).
+2. [SSL with Docker Swarm, Let's Encrypt and Nginx](https://finnian.io/blog/ssl-with-docker-swarm-lets-encrypt-and-nginx/),
+3. [certbot/certbot](https://hub.docker.com/r/certbot/certbot/) on docker hub.
+4. [certbot on github](https://github.com/certbot/certbot).
+5. [Cerbot home page](https://certbot.eff.org/).
+6. [How To SSL Ethereum Geth Node?](https://ethereum.stackexchange.com/questions/26026/how-to-ssl-ethereum-geth-node).
+7. [Understanding Nginx Server and Location Block Selection Algorithms](https://www.digitalocean.com/community/tutorials/understanding-nginx-server-and-location-block-selection-algorithms).
+8. [404 for .well-known/acme-challenge](https://community.letsencrypt.org/t/404-for-well-known-acme-challenge/38381).
+9. [Beginner’s Guide](http://nginx.org/en/docs/beginners_guide.html).
+10. [How nginx processes a request](http://nginx.org/en/docs/http/request_processing.html).
+
+
 
 ### Deploying proxy stack
 
