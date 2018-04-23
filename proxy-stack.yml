@@ -4,9 +4,10 @@ services:
   nginx:
     image: nginx:stable-alpine
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
+      - /home/docker/proxy/etc/letsencrypt:/etc/letsencrypt
       - /home/docker/proxy/html:/usr/share/nginx/html
       - /home/docker/proxy/nginx.conf:/etc/nginx/nginx.conf
+      - /home/docker/proxy/log:/var/log/nginx
     deploy:
       mode: global
       placement:
