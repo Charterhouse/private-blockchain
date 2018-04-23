@@ -704,6 +704,21 @@ Writing README to /etc/letsencrypt/live/your-domain-name/README.
 
 After certs where retrieved successfully, we moved them to `/etc/letsencrypt` folder on the swarm manager EC2 instance.
 
+> Note that in the log message above, it says that the certs are written to the `/etc/letsencrypt` folder. But actually it writes the certs to `/home/docker/proxy/etc/letsencrypt` - we provide this mapping in our docker command above.
+
+If you run the above docker command from the `proxy` folder, then the output of this command be put into two folders: `etc` and `var`. The `var` folder is just to get the logs from running certificate generation - if is safe to remove that folder after certificates were generated.
+
+So your proxy folder should have the following content:
+
+| path | description |
+|------|-------------|
+| html | In that folder you should put your `index.js` file. Its content will be served when you visit `https://your.domain.name/`. |
+| nginx.conf | This is your nginx configuration file. Please see the section *Deploying proxy stack* below. |
+| etc | The output of certificate generation process. You can move it around, but we advise to keep it somewhere under your home folder (so no in `/etc`, etc). If you put it in a place that normally requires `sudo` access, the nginx may have problem. |
+| var | The output of certificate generation process. Contains the logs of the certificate generation process. Will not be used after that and it is safe to remove this file after certs are generated |
+| log | Logs of the nginx server. Very handy of starting the container failed. |
+
+
 You can always see all the cert generation attempts for your domain using [https://crt.sh/](https://crt.sh/).
 
 #### Further reading
@@ -814,9 +829,10 @@ services:
   nginx:
     image: nginx:stable-alpine
     volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
+      - /home/docker/proxy/etc/letsencrypt:/etc/letsencrypt
       - /home/docker/proxy/html:/usr/share/nginx/html
       - /home/docker/proxy/nginx.conf:/etc/nginx/nginx.conf
+      - /home/docker/proxy/log:/var/log/nginx
     deploy:
       mode: global
       placement:
@@ -827,7 +843,9 @@ services:
       - 443:443
 ```
 
-Make sure that all the paths in the `volumes` section above exist on the EC2 instance corresponding to the swarm manager node. Finally, from the manager node, run:
+Make sure that all the paths in the `volumes` section above exist on the EC2 instance corresponding to the swarm manager node.
+
+Finally, from the manager node, run:
 
 ```bash
 $ docker stack deploy -c proxy-stack.yml proxy
