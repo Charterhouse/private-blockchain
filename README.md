@@ -263,6 +263,8 @@ the AWS documentation.
 
 ## Running blockchain nodes on the private network.
 
+> NOTE: Docker Cloud will be discontinued on May 25 2018 so the following text is here for reference.
+
 Having our VPC ready, we can now create our SWARM using Docker Cloud. Login to your docker cloud account (create one if you do not already have one), and in the *Swarms* panels select *Create*.
 
 > If you haven't done it before, you will need to connect you AWS account to Docker Cloud. Follow the instructions in [Link Amazon Web Services to Docker Cloud](https://docs.docker.com/docker-cloud/cloud-swarm/link-aws-swarm/) in Docker documentation.
