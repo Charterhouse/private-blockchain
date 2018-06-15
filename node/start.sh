@@ -24,4 +24,4 @@ geth --datadir /node/data \
      --targetgaslimit "4712388" \
      --rpc --rpcport 8545 --rpcaddr "0.0.0.0" --rpcapi "db,eth,net,web3,personal,web3" --rpccorsdomain "*" \
      --port 30303 $BOOTNODES \
-     2>>/node/blockchain.log
+     2>&1 | tee /node/blockchain.log

@@ -23,4 +23,4 @@ geth --datadir /node/data \
      --gasprice "20000000000" \
      --targetgaslimit "4712388" \
      --port 30303 $BOOTNODES \
-     2>>/node/blockchain.log
+     2>&1 | tee /node/blockchain.log
