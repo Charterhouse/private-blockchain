@@ -1,7 +1,7 @@
 version: "3.4"
 services:
   bootnode:
-    image: charterhouse/blockchain-bootnode:v0.1
+    image: charterhouse/blockchain-bootnode:v0.3
     deploy:
       placement:
         constraints:
