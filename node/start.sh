@@ -10,6 +10,7 @@ msg() {
 geth --datadir /node/data init /node/genesis.json
 
 BOOTNODES=""
+RPCDOMAINS=""
 
 if [[ -z $1 ]]; then
   msg "bootnodes not provided. Was it intended?"
