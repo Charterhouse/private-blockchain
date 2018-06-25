@@ -346,7 +346,7 @@ Here is the docker compose file for the bootstack (`boot-stack.yml`):
 version: "3.4"
 services:
   bootnode:
-    image: charterhouse/blockchain-bootnode:v0.1
+    image: charterhouse/blockchain-bootnode:v0.3
     deploy:
       placement:
         constraints:
@@ -380,6 +380,7 @@ networks:
   blockchain-net:
 volumes:
   data:
+
 ```
 
 From the terminal (the one connected to the , we run:
@@ -457,8 +458,8 @@ We will this `enode url` in the `nodes-stack.yml` file as a value for the `comma
 version: "3.4"
 services:
   node:
-    image: charterhouse/blockchain-node:v0.2
-    command: enode://96e26cf742db3f4bd74d7f7e11e87d83abba370e227756f3da735a902c3c07584f3bc077d1988091a91f68c0f0dec3a23704948ebe061c1a0484f63f63054ae4@172.31.34.190:30301
+    image: charterhouse/blockchain-node:v0.4
+    command: ["enode://96e26cf742db3f4bd74d7f7e11e87d83abba370e227756f3da735a902c3c07584f3bc077d1988091a91f68c0f0dec3a23704948ebe061c1a0484f63f63054ae4@172.31.34.190:30301", "*"]
     deploy:
       mode: global
       restart_policy:
@@ -486,6 +487,7 @@ volumes:
 networks:
   boot_blockchain-net:
     external: true
+
 ```
 
 Now, from the Swarm Manager terminal, we run:
@@ -743,17 +745,17 @@ You can always see all the cert generation attempts for your domain using [https
 We use nginx as the proxy server and we use the following template for the `nginx.conf` (see the `proxy/build/` folder):
 
 ```
-user nginx;  
+user nginx;
 worker_processes 1;
 
-error_log /var/log/nginx/error.log warn;  
+error_log /var/log/nginx/error.log warn;
 pid /var/run/nginx.pid;
 
-events {  
+events {
   worker_connections 1024;
 }
 
-http {  
+http {
   include /etc/nginx/mime.types;
   default_type application/octet-stream;
 
@@ -763,7 +765,32 @@ http {
 
   access_log /dev/stdout main;
   sendfile on;
-  keepalive_timeout 65;
+  keepalive_timeout 600;
+
+  upstream node_1 {
+    server {{node-1}}:8545;
+    keepalive 100;
+  }
+
+  upstream node_2 {
+    server {{node-2}}:8545;
+    keepalive 100;
+  }
+
+  upstream node_3 {
+    server {{node-3}}:8545;
+    keepalive 100;
+  }
+
+  upstream node_4 {
+    server {{node-4}}:8545;
+    keepalive 100;
+  }
+
+  upstream faucet {
+    server {{faucet}}:3001;
+    keepalive 100;
+  }
 
   server {
     # redirect from http to https
@@ -774,9 +801,9 @@ http {
 
   server {
     listen              443 ssl;
-    server_name         {{proxy-url}};
-    ssl_certificate     /etc/letsencrypt/live/{{proxy-url}}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{{proxy-url}}/privkey.pem;
+    server_name         {{proxy-domain}};
+    ssl_certificate     /etc/letsencrypt/live/{{proxy-domain}}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{proxy-domain}}/privkey.pem;
     ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
     ssl_ciphers         HIGH:!aNULL:!MD5;
 
@@ -786,31 +813,72 @@ http {
     }
 
     location /vis/ {
-      proxy_pass http://{{proxy-url}}:8080/;      
+      proxy_pass http://{{proxy-domain}}:8080/;
     }
 
-    location /node-1/ {
-       proxy_pass http://{{node-1}}:8545;
+    location /node-1 {
+       proxy_pass http://node_1;
+       proxy_connect_timeout       600;
+       proxy_send_timeout          600;
+       proxy_read_timeout          600;
+       send_timeout                600;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+    }
+
+    location /node-2 {
+       proxy_pass http://node_2;
+       proxy_connect_timeout       600;
+       proxy_send_timeout          600;
+       proxy_read_timeout          600;
+       send_timeout                600;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+    }
+
+    location /node-3 {
+       proxy_pass http://node_3;
+       proxy_connect_timeout       600;
+       proxy_send_timeout          600;
+       proxy_read_timeout          600;
+       send_timeout                600;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+    }
+
+    location /node-4 {
+       proxy_pass http://node_4;
+       proxy_connect_timeout       600;
+       proxy_send_timeout          600;
+       proxy_read_timeout          600;
+       send_timeout                600;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+    }
+
+    location /faucet/ {
+       proxy_pass http://faucet/;
+       proxy_connect_timeout       600;
+       proxy_send_timeout          600;
+       proxy_read_timeout          600;
+       send_timeout                600;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
     }
   }
 }
 ```
 
-In order to generate the ready to use configuration, please use the provided `build.py` script (also in `proxy/build/`). In this file, on top, please provide the suitable replacements. Currently we use `proxy-domain` to be the domain we registered earlier, and `node-1` is supposed to point out to the actual geth node:
-
-```python
-variables = {
-  'proxy-domain': 'your.domain.here',
-  'node-1': 'dns.or.ip.of.the.geth.node'
-}
-```
-
-For instance:
+In order to generate the ready to use configuration, please use the provided `build.py` script (also in `proxy/build/`). In this file, on top, please provide the suitable replacements. Currently we use `proxy-domain` to be the domain we registered earlier, `faucet` points to the node running the faucet, and `node-1`, `node-2`, `node-3`, `node-4` are the actual geth nodes:
 
 ```python
 variables = {
   'proxy-domain': 'blockchain.example.com',
-  'node-1': 'ec2.35.158.74.125.eu-central-1.compute.amazonaws.com'
+  'faucet': 'ec2-1-1-1-10.eu-central-1.compute.amazonaws.com',
+  'node-1': 'ec2-1-1-1-1.eu-central-1.compute.amazonaws.com',
+  'node-2': 'ec2-1-1-1-2.eu-central-1.compute.amazonaws.com',
+  'node-3': 'ec2-1-1-1-3.eu-central-1.compute.amazonaws.com',
+  'node-4': 'ec2-1-1-1-4.eu-central-1.compute.amazonaws.com'
 }
 ```
 
@@ -821,6 +889,8 @@ $ python3 build.py
 ```
 
 This will produce a `nginx.conf` file in the parent folder.
+
+> You can find the actual config file for our network in our Keybase team folder.
 
 Finally, the proxy stack (`proxy-stack.yml`):
 
@@ -860,7 +930,7 @@ With the given configuration that address of blockchain node `node-1` is `https:
 
 In folders `bootnode`, `node`, and `miner` you will find the dockerfiles corresponding 
 to the docker images used in the `boot-stack.yml` and `nodes-stack.yml` files. We published the ready to use images images on [Docker Hub](https://hub.docker.com). These are
-`charterhouse/blockchain-bootnode:v0.1`, `charterhouse/blockchain-node:v0.1`, and 
+`charterhouse/blockchain-bootnode:v0.3`, `charterhouse/blockchain-node:v0.4`, and 
 `charterhouse/blockchain-miner:v0.1` respectively. For simplicity, in our current setup 
 we do not use a separate miner.
 
