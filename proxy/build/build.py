@@ -4,7 +4,11 @@ import os, re
 target = os.path.join('.', '..')
 variables = {
   'proxy-domain': 'blockchain.example.com',
-  'node-1': 'ec2-35-196-55-33.eu-central-1.compute.amazonaws.com'
+  'faucet': 'ec2-1-1-1-10.eu-central-1.compute.amazonaws.com',
+  'node-1': 'ec2-1-1-1-1.eu-central-1.compute.amazonaws.com',
+  'node-2': 'ec2-1-1-1-2.eu-central-1.compute.amazonaws.com',
+  'node-3': 'ec2-1-1-1-3.eu-central-1.compute.amazonaws.com',
+  'node-4': 'ec2-1-1-1-4.eu-central-1.compute.amazonaws.com'
 }
 
 # Loop files
