@@ -9,21 +9,24 @@ msg() {
 
 geth --datadir /node/data init /node/genesis.json
 
-BOOTNODES=""
 RPCDOMAINS=""
+BOOTNODES=""
 
 if [[ -z $1 ]]; then
-  msg "bootnodes not provided. Was it intended?"
+  msg "rpcvhosts not provided. Was it intended?"
 else
-  msg "Using bootnodes: $1"
-  BOOTNODES="--bootnodes $1"
+  msg "Using rpcvhosts: $1"
+  RPCDOMAINS="--rpcvhosts=$1"
 fi
 
 if [[ -z $2 ]]; then
-  msg "rpcvhosts not provided. Was it intended?"
+  msg "bootnodes not provided. Was it intended?"
 else
-  msg "Using rpcvhosts: $2"
-  RPCDOMAINS="--rpcvhosts=$2"
+  # shift parameters so rest is available in $*
+  shift
+  nodes=$( IFS=,; echo "$*" )
+  msg "Using bootnodes: $nodes"
+  BOOTNODES="--bootnodes '$nodes'"
 fi
 
 geth --datadir /node/data \

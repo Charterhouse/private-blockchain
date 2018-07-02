@@ -459,7 +459,7 @@ version: "3.4"
 services:
   node:
     image: charterhouse/blockchain-node:v0.4
-    command: ["enode://96e26cf742db3f4bd74d7f7e11e87d83abba370e227756f3da735a902c3c07584f3bc077d1988091a91f68c0f0dec3a23704948ebe061c1a0484f63f63054ae4@172.31.34.190:30301", "*"]
+    command: ["*", "enode://96e26cf742db3f4bd74d7f7e11e87d83abba370e227756f3da735a902c3c07584f3bc077d1988091a91f68c0f0dec3a23704948ebe061c1a0484f63f63054ae4@172.31.34.190:30301"]
     deploy:
       mode: global
       restart_policy:
@@ -489,6 +489,8 @@ networks:
     external: true
 
 ```
+
+NOTE: You can add multiple enode-urls in the command by appending the array.
 
 Now, from the Swarm Manager terminal, we run:
 
